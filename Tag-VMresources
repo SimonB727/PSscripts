@@ -1,0 +1,47 @@
+# List all Resources within the Subscription
+
+connect-Azaccount -Tenant "" -UseDeviceAuthentication
+$sublist = get-azsubscription -tenantid ""
+    
+
+foreach($sub in $sublist){
+        Select-AzSubscription -Subscription $sub.Id -Name $sub.Name -Force
+        #get all resources groups and the VMs in them
+        $rgs = Get-AzResourceGroup
+         Foreach ($rg in $rgs){
+         $Rgname = $rg.Resourcegroupname
+         $resouce = $rg.ResourceId
+         $vms = (Get-AzVM -ResourceGroupName $Rgname).Name
+         foreach ($vm in $vms)
+
+         {
+         $vmname = (Get-AzVM -ResourceGroupName $Rgname -Name $vm).Name
+         $vmtags = (Get-AzVM -ResourceGroupName $Rgname -Name $vm).Tags
+         $vmNic = Get-AzNetworkInterface -ResourceGroupName $Rgname
+         $NICId = $vmNic.Id
+         $vmdisk = Get-AzDisk -ResourceGroupName $Rgname
+         $vmId = (Get-AzVM -ResourceGroupName $Rgname -Name $vm).Id
+    
+        #if disk is attached to the VM then tag it with VM tags
+                      foreach ($d in $vmdisk) {
+                      $dManagedBy = $d.ManagedBy
+           
+                      if ($d.ManagedBy -eq $vmId) {
+                       Write-Output "Applying Tags to $($d.name)" $vmtags
+                       $Settagdisk = Update-AzTag -ResourceId $d.Id  -Tag $vmtags -Operation Merge -Confirm 
+                       }
+                       #if Nic is attached to VM then tag it with VM tags
+                       foreach ($N in $vmNic) {
+                      $NManagedBy = $N.Id
+                       if ($N.Id -eq $NICId){
+                        Write-Output "Applying Tags to $($N.name)" $vmtags
+                       $SettagNic = Update-AzTag -ResourceId $N.Id -Tag $vmtags -Operation Merge -Confirm
+    
+         }
+         }
+         }
+         }
+         }
+
+    
+}
