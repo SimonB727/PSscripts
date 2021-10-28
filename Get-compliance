@@ -1,0 +1,34 @@
+
+connect-Azaccount -Tenant "" -UseDeviceAuthentication
+$path = ""
+
+$Query = @'
+
+UpdateSummary
+|summarize arg_max(LastUpdateApplied, *) by(Computer)
+|project LastUpdateApplied,Computer
+'@
+$date =Get-Date
+$day = $date.Day
+$sublist = get-azsubscription -tenantid ""
+foreach($sub in $sublist){
+        Select-AzSubscription -Subscription $sub.Id -Name $sub.Name -Force
+        $workspace = Get-AzOperationalInsightsWorkspace 
+        if($workspace){
+            if ($workspace -is [array]) {
+                foreach ($space in $workspace){
+                        $WorkspaceID = [string]$($space.customerID).guid
+                        $Results = Invoke-AzOperationalInsightsQuery -WorkspaceId $WorkspaceID -Query $Query
+                        $Results.Results | Export-Csv -Path $path + $day + "update.csv" -append -NoTypeInformation
+                    
+                }
+            } else {
+                $WorkspaceID = $($workspace.customerID).guid
+                        $Results = Invoke-AzOperationalInsightsQuery -WorkspaceId $WorkspaceID -Query $Query
+                        $Results.Results | Export-Csv -Path $path + $day + update.csv -append -NoTypeInformation        
+            }
+        }
+    
+}
+    
+
